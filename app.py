@@ -108,11 +108,12 @@ if submit:
 
     # Nilai akhir gabungan
     nilai_akhir = (
-        0.30 * uts +
-        0.40 * uas +
-        0.20 * tugas +
-        0.10 * nilai_kehadiran
-    )
+    0.30 * uts +          # 30% UTS
+    0.45 * uas +          # 45% UAS (paling berpengaruh)
+    0.15 * tugas +        # 15% Tugas
+    0.10 * nilai_kehadiran # 10% Kehadiran
+)
+
 
     st.divider()
     st.subheader("📊 Hasil Evaluasi Kelulusan")
