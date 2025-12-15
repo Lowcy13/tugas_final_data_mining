@@ -1,6 +1,7 @@
 import streamlit as st
 import pandas as pd
-from sklearn.tree import DecisionTreeClassifier
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.neighbors import KNeighborsClassifier
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import accuracy_score
 
@@ -25,18 +26,12 @@ except:
     st.error("❌ File student-mat.csv tidak ditemukan")
     st.stop()
 
-# Perbaiki delimiter jika terbaca 1 kolom
 if df.shape[1] == 1:
     df = pd.read_csv("student-mat.csv", sep=",")
 if df.shape[1] == 1:
     df = pd.read_csv("student-mat.csv", sep=";")
 
-# Normalisasi nama kolom
 df.columns = df.columns.str.strip().str.replace('"', '').str.lower()
-
-# Debug kolom
-st.caption("Kolom dataset yang terbaca:")
-st.write(df.columns.tolist())
 
 # =========================
 # VALIDASI KOLUMN
@@ -50,26 +45,41 @@ for col in required_cols:
 # =========================
 # PENYESUAIAN DATASET
 # =========================
-df["uts"] = df["g1"] * 5   # 0–20 → 0–100
+df["uts"] = df["g1"] * 5
 df["uas"] = df["g2"] * 5
-
 df["pass"] = df["g3"].apply(lambda x: 1 if x >= 10 else 0)
 
 X = df[["absences", "uts", "uas"]]
 y = df["pass"]
 
 # =========================
-# TRAIN MODEL ML
+# SPLIT DATA
 # =========================
 X_train, X_test, y_train, y_test = train_test_split(
     X, y, test_size=0.2, random_state=42
 )
 
-model = DecisionTreeClassifier(max_depth=4, random_state=42)
-model.fit(X_train, y_train)
+# =========================
+# TRAIN MODEL
+# =========================
+rf_model = RandomForestClassifier(
+    n_estimators=100,
+    random_state=42
+)
+rf_model.fit(X_train, y_train)
 
-accuracy = accuracy_score(y_test, model.predict(X_test))
-st.metric("📈 Akurasi Model (Dataset Asli)", f"{accuracy*100:.2f}%")
+knn_model = KNeighborsClassifier(n_neighbors=5)
+knn_model.fit(X_train, y_train)
+
+# =========================
+# AKURASI MODEL
+# =========================
+rf_acc = accuracy_score(y_test, rf_model.predict(X_test))
+knn_acc = accuracy_score(y_test, knn_model.predict(X_test))
+
+st.subheader("📈 Akurasi Model")
+st.metric("Random Forest", f"{rf_acc*100:.2f}%")
+st.metric("KNN", f"{knn_acc*100:.2f}%")
 
 st.divider()
 
@@ -105,34 +115,45 @@ if submit:
         0.10 * nilai_kehadiran
     )
 
-    st.divider()
     st.subheader("📊 Hasil Evaluasi Kelulusan")
 
     st.write(f"👤 **Nama**: {nama}")
     st.write(f"🆔 **NIM**: {nim}")
-    st.write(f"📌 **Nilai Kehadiran**: {nilai_kehadiran:.2f}")
     st.write(f"📌 **Nilai Akhir**: {nilai_akhir:.2f}")
 
+    status = "LULUS" if nilai_akhir >= 70 else "TIDAK LULUS"
+
     if nilai_akhir >= 70:
-        st.success("✅ **MAHASISWA DINYATAKAN LULUS** 🎓")
+        st.success("✅ MAHASISWA DINYATAKAN LULUS 🎓")
     else:
-        st.error("❌ **MAHASISWA DINYATAKAN TIDAK LULUS**")
+        st.error("❌ MAHASISWA DINYATAKAN TIDAK LULUS")
 
     # =========================
-    # ANALISIS ML (PENDUKUNG)
+    # PREDIKSI ML
     # =========================
-    prob = model.predict_proba([[absences, uts, uas]])
+    input_ml = [[absences, uts, uas]]
 
-    st.subheader("🤖 Analisis Machine Learning (Pendukung)")
+    rf_pred = rf_model.predict(input_ml)[0]
+    knn_pred = knn_model.predict(input_ml)[0]
+
+    rf_prob = rf_model.predict_proba(input_ml)[0]
+    knn_prob = knn_model.predict_proba(input_ml)[0]
+
+    st.subheader("🤖 Perbandingan Algoritma Machine Learning")
+
     st.dataframe(pd.DataFrame({
-        "Status": ["Tidak Lulus", "Lulus"],
-        "Probabilitas (%)": [
-            round(prob[0][0] * 100, 2),
-            round(prob[0][1] * 100, 2)
+        "Algoritma": ["Random Forest", "KNN"],
+        "Prediksi": [
+            "Lulus" if rf_pred == 1 else "Tidak Lulus",
+            "Lulus" if knn_pred == 1 else "Tidak Lulus"
+        ],
+        "Probabilitas Lulus (%)": [
+            round(rf_prob[1] * 100, 2),
+            round(knn_prob[1] * 100, 2)
         ]
     }))
 
     st.info(
-        "📌 Keputusan kelulusan ditentukan oleh nilai akhir gabungan (≥ 70). "
-        "Model Machine Learning digunakan sebagai analisis pendukung."
+        "📌 Keputusan akhir berdasarkan nilai akademik. "
+        "Machine Learning digunakan sebagai analisis pembanding."
     )
