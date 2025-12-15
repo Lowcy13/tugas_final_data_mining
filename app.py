@@ -14,25 +14,38 @@ st.set_page_config(
 )
 
 st.title("🎓 Evaluasi Kelulusan Mata Kuliah Matematika")
-st.caption("Berbasis Dataset Student Performance (Kaggle)")
 
 # =========================
-# LOAD DATASET
+# LOAD DATASET (AMAN)
 # =========================
 df = pd.read_csv("student-mat.csv", sep=";")
-df.columns = df.columns.str.strip()
+
+# Normalisasi nama kolom
+df.columns = df.columns.str.strip().str.replace('"', '').str.lower()
+
+# DEBUG (boleh dihapus nanti)
+st.caption("Kolom dataset:")
+st.write(list(df.columns))
+
+# =========================
+# CEK KOLUMN WAJIB
+# =========================
+required_cols = ["g1", "g2", "g3", "absences"]
+for col in required_cols:
+    if col not in df.columns:
+        st.error(f"Kolom '{col}' tidak ditemukan di dataset!")
+        st.stop()
 
 # =========================
 # PENYESUAIAN DATASET
 # =========================
-# Konversi nilai dari skala 0–20 → 0–100
-df["UTS"] = df["G1"] * 5
-df["UAS"] = df["G2"] * 5
+df["uts"] = df["g1"] * 5   # 0–20 → 0–100
+df["uas"] = df["g2"] * 5
 
-# Label kelulusan sesuai dataset
-df["pass"] = df["G3"].apply(lambda x: 1 if x >= 10 else 0)
+# Label kelulusan dataset asli
+df["pass"] = df["g3"].apply(lambda x: 1 if x >= 10 else 0)
 
-X = df[["absences", "UTS", "UAS"]]
+X = df[["absences", "uts", "uas"]]
 y = df["pass"]
 
 # =========================
@@ -46,8 +59,8 @@ model = DecisionTreeClassifier(max_depth=4, random_state=42)
 model.fit(X_train, y_train)
 
 accuracy = accuracy_score(y_test, model.predict(X_test))
-
 st.metric("📈 Akurasi Model (Dataset Asli)", f"{accuracy*100:.2f}%")
+
 st.divider()
 
 # =========================
@@ -70,11 +83,9 @@ with st.form("form_mahasiswa"):
 # PROSES PENILAIAN
 # =========================
 if submit:
-    # Nilai kehadiran
     nilai_kehadiran = ((50 - absences) / 50) * 100
     nilai_kehadiran = max(0, min(nilai_kehadiran, 100))
 
-    # Nilai akhir gabungan
     nilai_akhir = (
         0.30 * uts +
         0.40 * uas +
@@ -87,7 +98,6 @@ if submit:
 
     st.write(f"👤 Nama: **{nama}**")
     st.write(f"🆔 NIM: **{nim}**")
-    st.write(f"📌 Nilai Kehadiran: **{nilai_kehadiran:.2f}**")
     st.write(f"📌 Nilai Akhir: **{nilai_akhir:.2f}**")
 
     if nilai_akhir >= 70:
@@ -96,20 +106,15 @@ if submit:
         st.error("❌ **MAHASISWA DINYATAKAN TIDAK LULUS**")
 
     # =========================
-    # PREDIKSI MODEL ML
+    # ANALISIS ML
     # =========================
-    pred_prob = model.predict_proba([[absences, uts, uas]])
+    prob = model.predict_proba([[absences, uts, uas]])
 
-    st.subheader("🤖 Analisis Model Machine Learning")
+    st.subheader("🤖 Analisis Machine Learning")
     st.dataframe(pd.DataFrame({
         "Status": ["Tidak Lulus", "Lulus"],
         "Probabilitas (%)": [
-            round(pred_prob[0][0] * 100, 2),
-            round(pred_prob[0][1] * 100, 2)
+            round(prob[0][0] * 100, 2),
+            round(prob[0][1] * 100, 2)
         ]
     }))
-
-    st.info(
-        "📌 Keputusan kelulusan ditentukan oleh nilai akhir gabungan (≥ 70). "
-        "Model Machine Learning digunakan sebagai analisis pendukung berdasarkan dataset."
-    )
