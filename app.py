@@ -14,18 +14,36 @@ st.set_page_config(
 )
 
 st.title("🎓 Evaluasi Kelulusan Mata Kuliah Matematika")
+st.caption("Berbasis Dataset Student Performance (Kaggle)")
 
 # =========================
-# LOAD DATASET (AMAN)
+# LOAD DATASET (ANTI ERROR)
 # =========================
-df = pd.read_csv("student-mat.csv", sep=";")
+try:
+    df = pd.read_csv("student-mat.csv")
+except:
+    st.error("❌ Gagal membaca file student-mat.csv")
+    st.stop()
+
+# Jika hanya 1 kolom → delimiter salah
+if df.shape[1] == 1:
+    try:
+        df = pd.read_csv("student-mat.csv", sep=",")
+    except:
+        pass
+
+if df.shape[1] == 1:
+    try:
+        df = pd.read_csv("student-mat.csv", sep=";")
+    except:
+        pass
 
 # Normalisasi nama kolom
 df.columns = df.columns.str.strip().str.replace('"', '').str.lower()
 
-# DEBUG (boleh dihapus nanti)
-st.caption("Kolom dataset:")
-st.write(list(df.columns))
+# Tampilkan kolom (debug)
+st.caption("Kolom dataset yang terbaca:")
+st.write(df.columns.tolist())
 
 # =========================
 # CEK KOLUMN WAJIB
@@ -33,12 +51,13 @@ st.write(list(df.columns))
 required_cols = ["g1", "g2", "g3", "absences"]
 for col in required_cols:
     if col not in df.columns:
-        st.error(f"Kolom '{col}' tidak ditemukan di dataset!")
+        st.error(f"❌ Kolom '{col}' tidak ditemukan di dataset!")
         st.stop()
 
 # =========================
 # PENYESUAIAN DATASET
 # =========================
+# Konversi skala nilai
 df["uts"] = df["g1"] * 5   # 0–20 → 0–100
 df["uas"] = df["g2"] * 5
 
@@ -49,7 +68,7 @@ X = df[["absences", "uts", "uas"]]
 y = df["pass"]
 
 # =========================
-# TRAIN MODEL
+# TRAIN MODEL ML
 # =========================
 X_train, X_test, y_train, y_test = train_test_split(
     X, y, test_size=0.2, random_state=42
@@ -83,9 +102,11 @@ with st.form("form_mahasiswa"):
 # PROSES PENILAIAN
 # =========================
 if submit:
+    # Kehadiran → nilai
     nilai_kehadiran = ((50 - absences) / 50) * 100
     nilai_kehadiran = max(0, min(nilai_kehadiran, 100))
 
+    # Nilai akhir gabungan
     nilai_akhir = (
         0.30 * uts +
         0.40 * uas +
@@ -94,11 +115,12 @@ if submit:
     )
 
     st.divider()
-    st.subheader("📊 Hasil Evaluasi")
+    st.subheader("📊 Hasil Evaluasi Kelulusan")
 
-    st.write(f"👤 Nama: **{nama}**")
-    st.write(f"🆔 NIM: **{nim}**")
-    st.write(f"📌 Nilai Akhir: **{nilai_akhir:.2f}**")
+    st.write(f"👤 **Nama**: {nama}")
+    st.write(f"🆔 **NIM**: {nim}")
+    st.write(f"📌 **Nilai Kehadiran**: {nilai_kehadiran:.2f}")
+    st.write(f"📌 **Nilai Akhir**: {nilai_akhir:.2f}")
 
     if nilai_akhir >= 70:
         st.success("✅ **MAHASISWA DINYATAKAN LULUS** 🎓")
@@ -106,11 +128,11 @@ if submit:
         st.error("❌ **MAHASISWA DINYATAKAN TIDAK LULUS**")
 
     # =========================
-    # ANALISIS ML
+    # ANALISIS ML (PENDUKUNG)
     # =========================
     prob = model.predict_proba([[absences, uts, uas]])
 
-    st.subheader("🤖 Analisis Machine Learning")
+    st.subheader("🤖 Analisis Machine Learning (Pendukung)")
     st.dataframe(pd.DataFrame({
         "Status": ["Tidak Lulus", "Lulus"],
         "Probabilitas (%)": [
@@ -118,3 +140,8 @@ if submit:
             round(prob[0][1] * 100, 2)
         ]
     }))
+
+    st.info(
+        "📌 Keputusan kelulusan ditentukan oleh nilai akhir gabungan (≥ 70). "
+        "Model Machine Learning digunakan sebagai analisis pendukung berdasarkan dataset."
+    )
