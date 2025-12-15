@@ -108,10 +108,10 @@ if submit:
 
     # Nilai akhir gabungan
     nilai_akhir = (
-    0.30 * uts +          # 30% UTS
-    0.45 * uas +          # 45% UAS (paling berpengaruh)
-    0.15 * tugas +        # 15% Tugas
-    0.10 * nilai_kehadiran # 10% Kehadiran
+    0.35 * uts +          # 35% UTS
+    0.40 * uas +          # 40% UAS (paling berpengaruh)
+    0.10 * tugas +        # 15% Tugas
+    0.15 * nilai_kehadiran # 15% Kehadiran
 )
 
 
