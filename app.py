@@ -14,9 +14,10 @@ st.set_page_config(
 )
 
 # =========================
-# LOAD DATASET
+# LOAD DATASET (FIX DI SINI!)
 # =========================
 df = pd.read_csv("student-mat.csv", sep=";")
+df.columns = df.columns.str.strip()  # jaga-jaga spasi
 
 # =========================
 # PREPROCESSING
@@ -27,7 +28,7 @@ X = df[["studytime", "failures", "absences", "G1", "G2"]]
 y = df["pass"]
 
 # =========================
-# TRAIN MODEL
+# SPLIT & TRAIN MODEL
 # =========================
 X_train, X_test, y_train, y_test = train_test_split(
     X, y, test_size=0.2, random_state=42
@@ -42,7 +43,7 @@ accuracy = accuracy_score(y_test, model.predict(X_test))
 # HEADER
 # =========================
 st.title("🎓 Prediksi Kelulusan Mahasiswa")
-st.caption("Model: Decision Tree | Dataset: Student Performance (Kaggle)")
+st.caption("Dataset: Student Performance (Kaggle) | Model: Decision Tree")
 
 st.metric("📈 Akurasi Model", f"{accuracy*100:.2f}%")
 st.divider()
@@ -50,7 +51,7 @@ st.divider()
 # =========================
 # FORM INPUT MAHASISWA
 # =========================
-st.subheader("📝 Form Input Data Mahasiswa")
+st.subheader("📝 Input Data Mahasiswa")
 
 with st.form("form_mahasiswa"):
     nama = st.text_input("Nama Mahasiswa")
@@ -67,25 +68,10 @@ with st.form("form_mahasiswa"):
         }[x]
     )
 
-    failures = st.number_input(
-        "Jumlah Mata Kuliah Gagal / Remedial",
-        min_value=0, max_value=10, value=0
-    )
-
-    absences = st.number_input(
-        "Jumlah Ketidakhadiran",
-        min_value=0, max_value=50, value=3
-    )
-
-    g1 = st.number_input(
-        "Nilai Semester Sebelumnya (G1)",
-        min_value=0, max_value=20, value=10
-    )
-
-    g2 = st.number_input(
-        "Nilai Semester Terakhir (G2)",
-        min_value=0, max_value=20, value=10
-    )
+    failures = st.number_input("Jumlah Mata Kuliah Gagal", 0, 10, 0)
+    absences = st.number_input("Jumlah Ketidakhadiran", 0, 50, 3)
+    g1 = st.number_input("Nilai Semester Sebelumnya (G1)", 0, 20, 10)
+    g2 = st.number_input("Nilai Semester Terakhir (G2)", 0, 20, 10)
 
     submit = st.form_submit_button("🔍 Prediksi Kelulusan")
 
@@ -110,14 +96,10 @@ if submit:
 
     st.subheader("📊 Probabilitas Prediksi")
 
-    prob_df = pd.DataFrame({
+    st.dataframe(pd.DataFrame({
         "Status": ["Tidak Lulus", "Lulus"],
         "Probabilitas (%)": [
             round(probability[0][0] * 100, 2),
             round(probability[0][1] * 100, 2)
         ]
-    })
-
-    st.dataframe(prob_df, use_container_width=True)
-
-    st.info("📌 Prediksi ini bersifat simulasi untuk keperluan akademik.")
+    }))
