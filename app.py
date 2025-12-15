@@ -1,9 +1,12 @@
 import streamlit as st
 import pandas as pd
+import matplotlib.pyplot as plt
+import seaborn as sns
+
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.neighbors import KNeighborsClassifier
 from sklearn.model_selection import train_test_split
-from sklearn.metrics import accuracy_score
+from sklearn.metrics import accuracy_score, confusion_matrix
 
 # =========================
 # KONFIGURASI HALAMAN
@@ -26,11 +29,13 @@ except:
     st.error("❌ File student-mat.csv tidak ditemukan")
     st.stop()
 
+# Perbaiki delimiter jika perlu
 if df.shape[1] == 1:
     df = pd.read_csv("student-mat.csv", sep=",")
 if df.shape[1] == 1:
     df = pd.read_csv("student-mat.csv", sep=";")
 
+# Normalisasi nama kolom
 df.columns = df.columns.str.strip().str.replace('"', '').str.lower()
 
 # =========================
@@ -45,7 +50,7 @@ for col in required_cols:
 # =========================
 # PENYESUAIAN DATASET
 # =========================
-df["uts"] = df["g1"] * 5
+df["uts"] = df["g1"] * 5        # 0–20 → 0–100
 df["uas"] = df["g2"] * 5
 df["pass"] = df["g3"].apply(lambda x: 1 if x >= 10 else 0)
 
@@ -80,6 +85,60 @@ knn_acc = accuracy_score(y_test, knn_model.predict(X_test))
 st.subheader("📈 Akurasi Model")
 st.metric("Random Forest", f"{rf_acc*100:.2f}%")
 st.metric("KNN", f"{knn_acc*100:.2f}%")
+
+# =========================
+# VISUALISASI AKURASI
+# =========================
+st.subheader("📊 Perbandingan Akurasi Algoritma")
+
+akurasi_df = pd.DataFrame({
+    "Algoritma": ["Random Forest", "KNN"],
+    "Akurasi (%)": [rf_acc * 100, knn_acc * 100]
+})
+
+st.bar_chart(akurasi_df.set_index("Algoritma"))
+
+st.divider()
+
+# =========================
+# CONFUSION MATRIX
+# =========================
+st.subheader("🧩 Confusion Matrix")
+
+rf_cm = confusion_matrix(y_test, rf_model.predict(X_test))
+knn_cm = confusion_matrix(y_test, knn_model.predict(X_test))
+
+col1, col2 = st.columns(2)
+
+with col1:
+    st.write("### Random Forest")
+    fig, ax = plt.subplots()
+    sns.heatmap(
+        rf_cm,
+        annot=True,
+        fmt="d",
+        cmap="Blues",
+        xticklabels=["Tidak Lulus", "Lulus"],
+        yticklabels=["Tidak Lulus", "Lulus"]
+    )
+    ax.set_xlabel("Prediksi")
+    ax.set_ylabel("Aktual")
+    st.pyplot(fig)
+
+with col2:
+    st.write("### KNN")
+    fig, ax = plt.subplots()
+    sns.heatmap(
+        knn_cm,
+        annot=True,
+        fmt="d",
+        cmap="Greens",
+        xticklabels=["Tidak Lulus", "Lulus"],
+        yticklabels=["Tidak Lulus", "Lulus"]
+    )
+    ax.set_xlabel("Prediksi")
+    ax.set_ylabel("Aktual")
+    st.pyplot(fig)
 
 st.divider()
 
@@ -121,39 +180,30 @@ if submit:
     st.write(f"🆔 **NIM**: {nim}")
     st.write(f"📌 **Nilai Akhir**: {nilai_akhir:.2f}")
 
-    status = "LULUS" if nilai_akhir >= 70 else "TIDAK LULUS"
-
     if nilai_akhir >= 70:
         st.success("✅ MAHASISWA DINYATAKAN LULUS 🎓")
     else:
         st.error("❌ MAHASISWA DINYATAKAN TIDAK LULUS")
 
     # =========================
-    # PREDIKSI ML
+    # ANALISIS ML (PENDUKUNG)
     # =========================
     input_ml = [[absences, uts, uas]]
 
-    rf_pred = rf_model.predict(input_ml)[0]
-    knn_pred = knn_model.predict(input_ml)[0]
+    rf_prob = rf_model.predict_proba(input_ml)[0][1]
+    knn_prob = knn_model.predict_proba(input_ml)[0][1]
 
-    rf_prob = rf_model.predict_proba(input_ml)[0]
-    knn_prob = knn_model.predict_proba(input_ml)[0]
-
-    st.subheader("🤖 Perbandingan Algoritma Machine Learning")
+    st.subheader("🤖 Analisis Machine Learning (Pendukung)")
 
     st.dataframe(pd.DataFrame({
         "Algoritma": ["Random Forest", "KNN"],
-        "Prediksi": [
-            "Lulus" if rf_pred == 1 else "Tidak Lulus",
-            "Lulus" if knn_pred == 1 else "Tidak Lulus"
-        ],
         "Probabilitas Lulus (%)": [
-            round(rf_prob[1] * 100, 2),
-            round(knn_prob[1] * 100, 2)
+            round(rf_prob * 100, 2),
+            round(knn_prob * 100, 2)
         ]
     }))
 
     st.info(
-        "📌 Keputusan akhir berdasarkan nilai akademik. "
-        "Machine Learning digunakan sebagai analisis pembanding."
+        "📌 Keputusan kelulusan ditentukan oleh nilai akhir (≥ 70). "
+        "Model Machine Learning digunakan sebagai pembanding dan analisis pendukung."
     )
