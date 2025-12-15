@@ -14,7 +14,7 @@ st.set_page_config(
 )
 
 st.title("📘 Prediksi Kelulusan Mata Kuliah Matematika")
-st.caption("UTS, UAS, dan kehadiran sebagai faktor utama")
+st.caption("Berdasarkan UTS, UAS, Kehadiran, dan Tugas")
 
 # =========================
 # LOAD DATASET
@@ -27,8 +27,8 @@ df.columns = df.columns.str.strip()
 # =========================
 df["pass"] = df["G3"].apply(lambda x: 1 if x >= 10 else 0)
 
-# Kehadiran dipertahankan & diprioritaskan
-features = ["absences", "failures", "G1", "G2"]
+# Fitur utama (dataset asli)
+features = ["absences", "G1", "G2"]
 X = df[features]
 y = df["pass"]
 
@@ -50,10 +50,17 @@ st.metric("📈 Akurasi Model", f"{accuracy*100:.2f}%")
 st.divider()
 
 # =========================
-# FUNGSI KONVERSI NILAI
+# FUNGSI KONVERSI
 # =========================
 def convert_score(nilai):
+    """0–100 → 0–20"""
     return round((nilai / 100) * 20, 2)
+
+def tugas_to_bonus(jumlah_tugas):
+    """
+    Jumlah tugas (0–10) → bonus nilai (0–2)
+    """
+    return round((jumlah_tugas / 10) * 2, 2)
 
 # =========================
 # FORM INPUT MAHASISWA
@@ -66,22 +73,22 @@ with st.form("form_mahasiswa"):
 
     absences = st.number_input(
         "Jumlah Ketidakhadiran (Sangat Berpengaruh)",
-        min_value=0, max_value=50, value=3,
-        help="Semakin banyak tidak hadir, semakin kecil peluang lulus"
+        min_value=0, max_value=50, value=3
     )
 
-    failures = st.number_input(
-        "Jumlah Mata Kuliah Gagal Sebelumnya",
-        min_value=0, max_value=10, value=0
+    tugas = st.number_input(
+        "Jumlah Tugas yang Dikumpulkan",
+        min_value=0, max_value=10, value=8,
+        help="Semakin banyak tugas dikumpulkan, peluang lulus meningkat"
     )
 
     nilai_uts = st.number_input(
-        "Nilai Ujian Tengah Semester (UTS) – skala 0–100",
+        "Nilai Ujian Tengah Semester (UTS) – 0–100",
         min_value=0, max_value=100, value=75
     )
 
     nilai_uas = st.number_input(
-        "Nilai Ujian Akhir Semester (UAS) – skala 0–100",
+        "Nilai Ujian Akhir Semester (UAS) – 0–100",
         min_value=0, max_value=100, value=80
     )
 
@@ -94,7 +101,11 @@ if submit:
     g1 = convert_score(nilai_uts)
     g2 = convert_score(nilai_uas)
 
-    input_data = [[absences, failures, g1, g2]]
+    # Bonus tugas ditambahkan ke UAS
+    bonus = tugas_to_bonus(tugas)
+    g2_adjusted = min(g2 + bonus, 20)
+
+    input_data = [[absences, g1, g2_adjusted]]
 
     prediction = model.predict(input_data)
     probability = model.predict_proba(input_data)
@@ -121,6 +132,10 @@ if submit:
     }))
 
     st.info(
-        f"📌 Nilai dikonversi: "
-        f"UTS={g1}/20, UAS={g2}/20 | Kehadiran berpengaruh besar"
+        f"📌 Detail perhitungan:\n"
+        f"- UTS: {g1}/20\n"
+        f"- UAS: {g2}/20\n"
+        f"- Bonus tugas: +{bonus}\n"
+        f"- UAS setelah tugas: {g2_adjusted}/20\n"
+        f"- Kehadiran berpengaruh signifikan"
     )
