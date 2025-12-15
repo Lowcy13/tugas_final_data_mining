@@ -8,13 +8,13 @@ from sklearn.metrics import accuracy_score
 # KONFIGURASI HALAMAN
 # =========================
 st.set_page_config(
-    page_title="Prediksi Kelulusan Mahasiswa",
-    page_icon="🎓",
+    page_title="Prediksi Kelulusan Mata Kuliah Matematika",
+    page_icon="📘",
     layout="centered"
 )
 
-st.title("🎓 Prediksi Kelulusan Mahasiswa")
-st.caption("Nilai input disesuaikan dengan skala perkuliahan (0–100)")
+st.title("📘 Prediksi Kelulusan Mata Kuliah Matematika")
+st.caption("Berdasarkan nilai & kehadiran mahasiswa")
 
 # =========================
 # LOAD DATASET
@@ -25,9 +25,11 @@ df.columns = df.columns.str.strip()
 # =========================
 # PREPROCESSING
 # =========================
+# Lulus jika nilai akhir >= 10 (skala 0–20)
 df["pass"] = df["G3"].apply(lambda x: 1 if x >= 10 else 0)
 
-features = ["studytime", "failures", "absences", "G1", "G2"]
+# Fitur yang relevan
+features = ["failures", "absences", "G1", "G2"]
 X = df[features]
 y = df["pass"]
 
@@ -46,18 +48,8 @@ st.metric("📈 Akurasi Model", f"{accuracy*100:.2f}%")
 st.divider()
 
 # =========================
-# FUNGSI KONVERSI
+# KONVERSI NILAI 0–100 → 0–20
 # =========================
-def convert_studytime(jam):
-    if jam <= 2:
-        return 1
-    elif jam <= 5:
-        return 2
-    elif jam <= 10:
-        return 3
-    else:
-        return 4
-
 def convert_score(nilai):
     return round((nilai / 100) * 20, 2)
 
@@ -70,28 +62,23 @@ with st.form("form_mahasiswa"):
     nama = st.text_input("Nama Mahasiswa")
     nim = st.text_input("NIM")
 
-    jam_belajar = st.number_input(
-        "Jam Belajar per Hari",
-        min_value=0.0, max_value=24.0, value=3.0
-    )
-
     failures = st.number_input(
-        "Jumlah Mata Kuliah Gagal",
+        "Jumlah Mata Kuliah Gagal Sebelumnya",
         min_value=0, max_value=10, value=0
     )
 
     absences = st.number_input(
-        "Jumlah Ketidakhadiran",
+        "Jumlah Ketidakhadiran pada Matematika",
         min_value=0, max_value=50, value=3
     )
 
     nilai_g1_100 = st.number_input(
-        "Nilai Semester Sebelumnya (0–100)",
+        "Nilai Ujian Awal Matematika (0–100)",
         min_value=0, max_value=100, value=75
     )
 
     nilai_g2_100 = st.number_input(
-        "Nilai Semester Terakhir (0–100)",
+        "Nilai Ujian Tengah/Proses (0–100)",
         min_value=0, max_value=100, value=80
     )
 
@@ -101,11 +88,10 @@ with st.form("form_mahasiswa"):
 # HASIL PREDIKSI
 # =========================
 if submit:
-    studytime = convert_studytime(jam_belajar)
     g1 = convert_score(nilai_g1_100)
     g2 = convert_score(nilai_g2_100)
 
-    input_data = [[studytime, failures, absences, g1, g2]]
+    input_data = [[failures, absences, g1, g2]]
 
     prediction = model.predict(input_data)
     probability = model.predict_proba(input_data)
@@ -117,9 +103,9 @@ if submit:
     st.write(f"🆔 **NIM**: {nim}")
 
     if prediction[0] == 1:
-        st.success("✅ **MAHASISWA DIPREDIKSI LULUS** 🎓")
+        st.success("✅ **MAHASISWA DIPREDIKSI LULUS MATA KULIAH MATEMATIKA**")
     else:
-        st.error("❌ **MAHASISWA DIPREDIKSI TIDAK LULUS**")
+        st.error("❌ **MAHASISWA DIPREDIKSI TIDAK LULUS MATA KULIAH MATEMATIKA**")
 
     st.subheader("📊 Probabilitas Prediksi")
 
@@ -133,5 +119,5 @@ if submit:
 
     st.info(
         f"📌 Konversi nilai: "
-        f"G1={g1}/20, G2={g2}/20, Studytime={studytime}"
+        f"G1={g1}/20, G2={g2}/20"
     )
