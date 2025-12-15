@@ -14,45 +14,27 @@ st.set_page_config(
 )
 
 st.title("🎓 Prediksi Kelulusan Mahasiswa")
+st.caption("Dataset: Student Performance (Kaggle)")
 
 # =========================
-# LOAD DATASET (SUPER AMAN)
+# LOAD DATASET (FIX SESUAI CSV)
 # =========================
-try:
-    df = pd.read_csv("student-mat.csv", sep=";", encoding="utf-8")
-except:
-    df = pd.read_csv("student-mat.csv", sep=";", encoding="latin1")
-
-# Bersihkan nama kolom
+df = pd.read_csv("student-mat.csv")  # ← INI YANG BENAR
 df.columns = df.columns.str.strip()
-
-# =========================
-# CEK KOLOM G3
-# =========================
-if "G3" not in df.columns:
-    st.error("❌ Kolom **G3** tidak ditemukan di dataset.")
-    st.write("Kolom yang tersedia:")
-    st.write(df.columns.tolist())
-    st.stop()
 
 # =========================
 # PREPROCESSING
 # =========================
+# Target klasifikasi dari G3
 df["pass"] = df["G3"].apply(lambda x: 1 if x >= 10 else 0)
 
+# Fitur numerik yang sederhana
 features = ["studytime", "failures", "absences", "G1", "G2"]
-
-# Cek fitur
-for col in features:
-    if col not in df.columns:
-        st.error(f"❌ Kolom **{col}** tidak ditemukan.")
-        st.stop()
-
 X = df[features]
 y = df["pass"]
 
 # =========================
-# TRAIN MODEL
+# SPLIT & TRAIN MODEL
 # =========================
 X_train, X_test, y_train, y_test = train_test_split(
     X, y, test_size=0.2, random_state=42
@@ -80,26 +62,26 @@ with st.form("form_mahasiswa"):
         [1, 2, 3, 4],
         format_func=lambda x: {
             1: "≤ 2 jam",
-            2: "2–5 jam",
-            3: "5–10 jam",
+            2: "2 – 5 jam",
+            3: "5 – 10 jam",
             4: "> 10 jam"
         }[x]
     )
 
     failures = st.number_input("Jumlah Mata Kuliah Gagal", 0, 10, 0)
     absences = st.number_input("Jumlah Ketidakhadiran", 0, 50, 3)
-    g1 = st.number_input("Nilai G1", 0, 20, 10)
-    g2 = st.number_input("Nilai G2", 0, 20, 10)
+    g1 = st.number_input("Nilai Semester Sebelumnya (G1)", 0, 20, 10)
+    g2 = st.number_input("Nilai Semester Terakhir (G2)", 0, 20, 10)
 
-    submit = st.form_submit_button("🔍 Prediksi")
+    submit = st.form_submit_button("🔍 Prediksi Kelulusan")
 
 # =========================
 # HASIL PREDIKSI
 # =========================
 if submit:
     input_data = [[studytime, failures, absences, g1, g2]]
-    pred = model.predict(input_data)
-    prob = model.predict_proba(input_data)
+    prediction = model.predict(input_data)
+    probability = model.predict_proba(input_data)
 
     st.divider()
     st.subheader("🧠 Hasil Prediksi")
@@ -107,16 +89,17 @@ if submit:
     st.write(f"👤 **Nama**: {nama}")
     st.write(f"🆔 **NIM**: {nim}")
 
-    if pred[0] == 1:
+    if prediction[0] == 1:
         st.success("✅ **MAHASISWA DIPREDIKSI LULUS** 🎓")
     else:
         st.error("❌ **MAHASISWA DIPREDIKSI TIDAK LULUS**")
 
-    st.subheader("📊 Probabilitas")
+    st.subheader("📊 Probabilitas Prediksi")
+
     st.dataframe(pd.DataFrame({
         "Status": ["Tidak Lulus", "Lulus"],
         "Probabilitas (%)": [
-            round(prob[0][0]*100, 2),
-            round(prob[0][1]*100, 2)
+            round(probability[0][0] * 100, 2),
+            round(probability[0][1] * 100, 2)
         ]
     }))
