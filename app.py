@@ -115,7 +115,7 @@ st.subheader("📝 Input Data Mahasiswa")
 
 uts = st.number_input("Nilai UTS (0–100)", 0, 100, 60)
 uas = st.number_input("Nilai UAS (0–100)", 0, 100, 60)
-absences = st.number_input("Jumlah Ketidakhadiran (0–16)", 0, 16, 5)
+absences = st.number_input("Jumlah Ketidakhadiran", 0, 16, 5)
 
 # =========================
 # PREDIKSI
