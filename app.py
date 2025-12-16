@@ -22,18 +22,18 @@ st.caption("Machine Learning sebagai Penentu Utama")
 # =========================
 # LOAD DATASET
 # =========================
-df = pd.read_csv("student-mat.csv", sep=";")
-
-# Normalisasi nama kolom
-df.columns = (
-    df.columns
-    .str.strip()
-    .str.lower()
-    .str.replace('"', '')
+df = pd.read_csv(
+    "student-mat.csv",
+    sep=",",
+    quotechar='"'
 )
 
-# Debug (WAJIB SAAT ERROR)
+# Bersihkan nama kolom
+df.columns = df.columns.str.strip().str.lower()
+
+# Debug
 st.write("Kolom yang terbaca:", df.columns.tolist())
+
 
 
 # =========================
